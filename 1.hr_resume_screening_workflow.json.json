@@ -1,0 +1,384 @@
+{
+  "name": "My workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "formTitle": " Job Application Form",
+        "formDescription": "Thank you for your interest! Please fill out the details below to apply.",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Candidate Name"
+            },
+            {
+              "fieldLabel": "Email",
+              "fieldType": "email"
+            },
+            {
+              "fieldLabel": "Job Role",
+              "fieldType": "dropdown",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "Customer Support Executive"
+                  },
+                  {
+                    "option": " Data Analyst"
+                  }
+                ]
+              }
+            },
+            {
+              "fieldLabel": "Resume",
+              "fieldType": "file"
+            },
+            {
+              "fieldLabel": "Phone Number"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.6,
+      "position": [
+        0,
+        -288
+      ],
+      "id": "415e9db3-3a1c-406d-beb0-5b07b025449c",
+      "name": "On form submission",
+      "webhookId": "4ebb3fa7-cb82-4836-bb88-b443d98be7a6"
+    },
+    {
+      "parameters": {
+        "operation": "pdf",
+        "binaryPropertyName": "Resume",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.1,
+      "position": [
+        224,
+        -288
+      ],
+      "id": "12ce877b-bf8e-4399-8ba9-63175f751717",
+      "name": "Extract from File"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=YOUR_API_KEY_HERE",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        672,
+        -288
+      ],
+      "id": "639d51f9-0d53-405c-b1f5-c83670e4ed5a",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "jsCode": "const jobRole = $('On form submission').item.json['Job Role'];\nconst resumeText = $('Extract from File').item.json.text;\n\nconst jobDescriptions = {\n  \"Customer Support Executive\": \"Job Title: Customer Support Executive. We are looking for a Customer Support Executive with good communication skills. Requirements: Bachelor's degree (any stream), Good English communication skills, Basic computer knowledge, 0-2 years experience, freshers welcome, Problem-solving attitude. Nice to have: Knowledge of AI tools or automation, Telugu/Hindi proficiency.\",\n  \n  \"Data Analyst\": \"Job Title: Junior Data Analyst. We are looking for a Data Analyst with strong analytical skills. Requirements: Bachelor's degree in any field, Knowledge of Excel and SQL, Basic understanding of data visualization, 0-2 years experience, freshers welcome, Strong attention to detail. Nice to have: Knowledge of Power BI, Python, or AI tools.\"\n};\n\nconst selectedJD = jobDescriptions[jobRole] || \"We are looking for a motivated candidate for an entry-level position with good communication skills and willingness to learn.\";\n\nconst prompt = `You are an expert HR recruiter. Analyze this resume against the job description below. Job Description: ${selectedJD} Resume Text: ${resumeText} Return ONLY a valid JSON response with no markdown formatting and no backticks, just raw JSON with these exact keys: candidate_name, score, matched_skills, missing_skills, experience_summary, recommendation, reason. The score must be between 1 and 10. Be strict and honest in your evaluation.`;\n\nreturn [{\n  json: {\n    contents: [\n      {\n        parts: [\n          { text: prompt }\n        ]\n      }\n    ]\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        448,
+        -288
+      ],
+      "id": "0795d498-e0ff-4b3a-9f33-200ab35a1c9e",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "jsCode": "const rawText = $input.first().json.candidates[0].content.parts[0].text;\n\n// Remove markdown code blocks if present\nconst cleanText = rawText.replace(/```json\\n?/g, '').replace(/```\\n?/g, '').trim();\n\nconst parsed = JSON.parse(cleanText);\n\nreturn [{\n  json: parsed\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        896,
+        -288
+      ],
+      "id": "8beddbee-1cad-4938-8019-65bb1efd1829",
+      "name": "Code in JavaScript1"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "f09c09af-b0f0-4f31-8745-22e16c03f1d6",
+              "leftValue": "={{ $json.score }}",
+              "rightValue": 7,
+              "operator": {
+                "type": "number",
+                "operation": "gte"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1120,
+        -288
+      ],
+      "id": "f17088ae-eb2c-4bde-a662-6b30c6a091da",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "https://docs.google.com/spreadsheets/d/1IuA3oN6eskKbzaPSKrrL14BpCVg3obOyaYROJEMmLbg/edit?gid=0#gid=0",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": " HR Resume Screening Results",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1IuA3oN6eskKbzaPSKrrL14BpCVg3obOyaYROJEMmLbg/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Date": "={{ $now.format('yyyy-MM-dd HH:mm') }}",
+            "Candiate Name": "={{ $json.candidate_name }}",
+            "Score": "={{ $json.score }}",
+            "Matched Skills": "={{ $json.matched_skills.join(', ') }}",
+            "Missing": "={{ $json.missing_skills.join(', ') }}",
+            "Rcommendation": "={{ $json.recommendation }}",
+            "Reason": "={{ $json.reason }}",
+            "Skills": "={{ $json.matched_skills.join(', ') }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Date",
+              "displayName": "Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Candiate Name",
+              "displayName": "Candiate Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Score",
+              "displayName": "Score",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Matched Skills",
+              "displayName": "Matched Skills",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Missing",
+              "displayName": "Missing",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Skills",
+              "displayName": "Skills",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Rcommendation",
+              "displayName": "Rcommendation",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Reason",
+              "displayName": "Reason",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1344,
+        -288
+      ],
+      "id": "45cdf64b-27ad-47c8-b040-6ba54a5a697f",
+      "name": "Append row in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "wkPwa5Ptl1NCcMNQ",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "maheshbolagani225@gmail.com",
+        "subject": "=New Shortlisted Candidate - {{ $json['Candiate Name'] }}",
+        "message": "=<h2>New Candidate Shortlisted!</h2> <p><strong>Name:</strong> {{ $json['Candiate Name'] }}</p> <p><strong>Score:</strong> {{ $json.Score }}/10</p> <p><strong>Recommendation:</strong> {{ $json['Rcommendation'] }}</p>  <h3>Matched Skills:</h3> <p>{{ $json['Matched Skills'] }}</p>  <h3>Missing Skills:</h3> <p>{{ $json.Missing }}</p>  <h3>Summary:</h3> <p>{{ $json.Reason }}</p>",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1568,
+        -288
+      ],
+      "id": "5dfd1ae6-cc06-47be-bb75-2882e16d3468",
+      "name": "Send a message",
+      "webhookId": "eb7cd19c-4816-48f9-bdad-3d9f56574c66",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "fFCPLruwQU4BOGgU",
+          "name": "Gmail OAuth2 API"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "On form submission": {
+      "main": [
+        [
+          {
+            "node": "Extract from File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from File": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript1": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Append row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append row in sheet": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "022cff41-38b4-450a-bddb-60b907a659ba",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "20619cfc201bb7d17bca575370cf5138c37601aec0287c57ed3869872d9c1636"
+  },
+  "nodeGroups": [],
+  "id": "atqQZON2g2fA840x",
+  "tags": []
+}
