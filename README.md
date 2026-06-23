@@ -37,8 +37,23 @@ The AI provides detailed, honest reasoning for every decision — not just a sco
 - `workflow.json` — Full exported n8n workflow (importable)
 - `sample_resumes/` — Test resumes used for demo (strong/average candidates)
 - `screenshots/` — Workflow diagram and execution outputs
-  
+
+  ## 📸 Demo Screenshots
+
+**Workflow Architecture**
+![Workflow Diagram](workflow_diagram.png)
+
+**Candidate Application Form**
+![Application Form](application_form.png)
+
+**Results Logged in Google Sheets**
+![Sheet Output](sheet_output.png)
+
+**HR Email Notification**
+![Email Notification](email_notification.png)
+
  ## ⚠️ Setup Note
+ 
 This workflow file has the Gemini API key removed for security. Before importing into n8n, replace `YOUR_API_KEY_HERE` in the HTTP Request node URL with your own [Google Gemini API key](https://aistudio.google.com/apikey).
 
 ## 🎯 Business Impact
